@@ -4,8 +4,6 @@ For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
-import logging
-
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -32,8 +30,10 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    "_collections/examples/model_load/from_safetensor_load/*"
-    "_collections/examples/rl/README.md",
+    (
+        "_collections/examples/model_load/from_safetensor_load/*"
+        "_collections/examples/rl/README.md"
+    ),
     "_collections/examples/sft/**",
     "_collections/examples/deepscaler/**",
 ]
@@ -47,7 +47,7 @@ html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_logo = "_static/img/tunix.png"
 html_css_files = [
-    'custom.css',
+    "custom.css",
 ]
 
 html_theme_options = {
@@ -108,7 +108,7 @@ napoleon_include_init_with_doc = False
 autodoc_default_options = {
     "members": True,
     "imported-members": True,
-    "undoc-members": True,
+    #   "undoc-members": True,
 }
 
 
@@ -117,25 +117,3 @@ intersphinx_mapping = {
     "flax": ("https://flax.readthedocs.io/en/stable/", None),
     "jax": ("https://docs.jax.dev/en/latest/", None),
 }
-
-
-
-class FilterSphinxWarnings(logging.Filter):
-    """Filter autosummary 'duplicate object description' warnings.
-
-    These warnings are unnecessary as they do not cause missing documentation
-    or rendering issues, so it is safe to filter them out.
-    """
-
-    def __init__(self, app):
-        self.app = app
-        super().__init__()
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        msg = record.getMessage()
-
-        filter_out = ("duplicate object description",)
-
-        if msg.strip().startswith(filter_out):
-            return False
-        return True
