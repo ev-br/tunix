@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from collections import Counter
 import os
-from pathlib import Path
+import pathlib
 import tempfile
 from typing import Any, Dict, List, cast
 import unittest
@@ -27,6 +26,7 @@ import optax
 from tunix.cli import config
 from tunix.sft import peft_trainer
 from tunix.tests import test_common as tc
+from tunix.utils import env_utils
 
 
 class ConfigTest(parameterized.TestCase):
@@ -108,9 +108,9 @@ class ConfigTest(parameterized.TestCase):
         "training_config.eval_every_n_steps=10",
     ]
     hp = config.initialize(argv)
-    
+
     config_dict = cast(Dict[str, Any], hp.config)
-   
+
     self.assertEqual(config_dict["training_config"]["max_steps"], 150)
     self.assertEqual(
         config_dict["training_config"]["data_sharding_axis"], ["fsdp", "dp"]
@@ -300,7 +300,7 @@ class ConfigTest(parameterized.TestCase):
           expected=((2, 2), ("x", "y")),
       ),
   )
-  @mock.patch("jax.device_count")
+  @mock.patch.object(jax, 'device_count')
   def test_create_mesh_valid(
       self, mock_device_count_fn, raw_keys, mock_num_devices, expected
   ):
@@ -386,7 +386,7 @@ class ConfigTest(parameterized.TestCase):
           error_regex="requires 6 devices, but found 5",
       ),
   )
-  @mock.patch("jax.device_count")
+  @mock.patch.object(jax, 'device_count')
   def test_create_mesh_invalid(
       self,
       mock_device_count_fn,
@@ -434,13 +434,13 @@ class ConfigTest(parameterized.TestCase):
     reward_fns = hp.obtain_reward_fn()
     self.assertLen(reward_fns, expected_reward_fn_len)
     actual_names = [fn.__name__ for fn in reward_fns]
-    self.assertEqual(Counter(actual_names), Counter(expected_reward_fn_names))
+    self.assertCountEqual(actual_names, expected_reward_fn_names)
 
   def test_obtain_reward_fn_relative_path(self):
     hp = self.initialize_config([])
 
     with tempfile.TemporaryDirectory() as tmp_dir_str:
-      root = Path(tmp_dir_str)
+      root = pathlib.Path(tmp_dir_str)
 
     reward_dir = root / "tunix" / "cli" / "reward_fn"
     reward_dir.mkdir(parents=True)
@@ -453,7 +453,7 @@ class ConfigTest(parameterized.TestCase):
 
     hp.config["reward_functions"] = ["tunix/cli/reward_fn/dummy.py"]
 
-    with mock.patch("tunix.cli.config.get_project_root", return_value=root):
+    with mock.patch.object(config, 'get_project_root', return_value=root):
       original_cwd = os.getcwd()
       try:
         os.chdir(run_dir)
@@ -463,6 +463,38 @@ class ConfigTest(parameterized.TestCase):
 
       finally:
         os.chdir(original_cwd)
+
+  def test_obtain_reward_fn_file_not_found(self):
+    hp = self.initialize_config(
+        ["reward_functions=['tunix/cli/reward_fn/non_existent.py']"]
+    )
+    with self.assertRaisesRegex(
+        ImportError, "Failed to execute module non_existent"
+    ):
+      hp.obtain_reward_fn()
+
+  def test_obtain_reward_fn_absolute_path_outside_project(self):
+    """Tests loading a reward function from an absolute FILE path outside the project root."""
+    hp = self.initialize_config([])
+    with tempfile.TemporaryDirectory() as tmp_dir_str:
+      external_root = pathlib.Path(tmp_dir_str) / "some_other_project"
+      external_root.mkdir()
+      external_module_file = external_root / "external_reward.py"
+      module_content = "def external_reward_func(val): return val * 10"
+      external_module_file.write_text(module_content)
+      abs_path = str(external_module_file.resolve())
+      hp.config["reward_functions"] = [abs_path]
+      hp.config["verl_compatible"] = False
+
+      with mock.patch.object(
+          config,
+          "get_project_root",
+          return_value=pathlib.Path("/irrelevant/tunix/project"),
+      ):
+        reward_fns = hp.obtain_reward_fn()
+        self.assertLen(reward_fns, 1)
+      self.assertEqual(reward_fns[0].__name__, "external_reward_func")
+      self.assertEqual(reward_fns[0](5), 50)
 
 
 if __name__ == "__main__":

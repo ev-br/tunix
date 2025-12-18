@@ -72,7 +72,7 @@ class ShardingConfig:
         ffw_weight_fd=('tp', fsdp),
         rms_norm_weight=('tp',),
         act_btd=('fsdp', None, None if is_sampling else 'tp'),
-        act_btf=('fsdp', None, 'tp'),
+        act_btf=('fsdp', None, None),
         act_btnh=('fsdp', None, 'tp', None),
     )
 
@@ -846,7 +846,7 @@ class RMSNorm(nnx.Module):
 
 
 class Gemma3(nnx.Module):
-  """Gemma transformer."""
+  """Gemma3 transformer."""
 
   def __init__(self, config: ModelConfig, *, rngs: nnx.Rngs):
     self.config = config

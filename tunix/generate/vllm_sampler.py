@@ -23,8 +23,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from absl import logging
 import jax
-import jax.numpy as jnp
 import jaxtyping
+import numpy as np
 from tunix.generate import base_sampler
 from tunix.generate import tokenizer_adapter as tok_adapter
 from tunix.generate import utils
@@ -37,6 +37,7 @@ from vllm.inputs import TokensPrompt
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import BeamSearchParams
 from vllm.sampling_params import SamplingParams
+
 
 # Colocate vllm engine and worker in the main process
 os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
@@ -392,25 +393,24 @@ class VllmSampler(base_sampler.BaseSampler):  # pylint: disable=invalid-name
       max_prompt_length = utils.next_power_of_2(max_tokens_length)
     all_input_ids = [
         utils.pad_to_length(
-            jnp.array(x),
+            np.array(x, dtype=np.int32),
             target_length=max_prompt_length,
             pad_value=self.tokenizer.pad_id(),
             left=True,
         )
         for x in prompt_ids
     ]
-    all_input_ids = jnp.array(all_input_ids)
+    all_input_ids = np.array(all_input_ids, dtype=np.int32)
 
     all_output_ids = [
         utils.pad_to_length(
-            jnp.array(x),
+            np.array(x, dtype=np.int32),
             target_length=max_generation_steps,
             pad_value=self.tokenizer.pad_id(),
             left=False,
         )
         for x in out_tokens[0]
     ]
-    all_output_ids = jnp.array(all_output_ids)
     # To support multisampling, just return the whole list of SamplerOutput
     return base_sampler.SamplerOutput(
         text=decoded_outputs[0],

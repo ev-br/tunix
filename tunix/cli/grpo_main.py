@@ -14,6 +14,9 @@
 
 """Main entry point for GRPO training."""
 from absl import app
+from absl import flags
+from absl import logging
+import jax
 from tunix.cli import config
 from tunix.cli.utils import model as model_lib
 from tunix.examples.data import math_dataset as data_lib
@@ -21,6 +24,10 @@ from tunix.rl import rl_cluster as rl_cluster_lib
 from tunix.rl.grpo import grpo_learner
 from tunix.rl.grpo.grpo_learner import GrpoConfig
 from tunix.rl.rollout import base_rollout
+
+_PATHWAYS_BNS = flags.DEFINE_string(
+    "pathways_bns", None, "BNS address of the Pathways server."
+)
 
 
 class GrpoPipeline(config.HyperParameters):
@@ -111,15 +118,20 @@ class GrpoPipeline(config.HyperParameters):
     )
 
     if self.config["data_source"] == "local":
-      dataset = data_lib.get_dataset_from_parquet(
-          self.config["data_directory"],
-          grpo_trainer.rl_cluster.tokenizer.tokenizer,
-      ).batch(self.config["batch_size"])
+      dataset = data_lib.create_dataset(
+          data_source=self.config["data_source"],
+          dataset=self.config["data_directory"],
+          batch_size=self.config["batch_size"],
+          num_batches=None,
+          tokenizer=grpo_trainer.rl_cluster.tokenizer.tokenizer,
+      )
     else:
       dataset = data_lib.create_dataset(
-          self.config["dataset_name"],
-          self.config["batch_size"],
-          self.config["num_batches"],
+          data_source="tfds",
+          dataset=self.config["dataset_name"],
+          batch_size=self.config["batch_size"],
+          num_batches=self.config["num_batches"],
+          tfds_download=self.config["tfds_download"],
       )
 
     mesh = self.create_mesh("actor_model_config")
@@ -127,8 +139,22 @@ class GrpoPipeline(config.HyperParameters):
       grpo_trainer.train(dataset)
 
 
+def _setup_jax_pathways(pathways_bns: str):
+  """Sets up Jax with Pathways."""
+  flags.FLAGS.pathways_ifrt = True
+  jax.config.update("jax_xla_backend", "pathways")
+  jax.config.update("jax_backend_target", pathways_bns)
+
+
 def main(argv, **kwargs):
+  if _PATHWAYS_BNS.value:
+    _setup_jax_pathways(_PATHWAYS_BNS.value)
   pipeline = GrpoPipeline(argv, **kwargs)
+  logging.info(
+      "--- Launching GRPO pipeline with following config ---\n"
+      "%r\n--------------------------",
+      pipeline.config,
+  )
   pipeline.run_grpo_trainer()
 
 

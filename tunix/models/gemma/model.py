@@ -79,7 +79,7 @@ class ShardingConfig:
         ffw_weight_fd=('tp', fsdp),
         rms_norm_weight=('tp',),
         act_btd=('fsdp', None, None if is_sampling else 'tp'),
-        act_btf=('fsdp', None, 'tp'),
+        act_btf=('fsdp', None, None),
         act_btnh=('fsdp', None, 'tp', None),
         score_weight_d1=(fsdp, None),
     )
@@ -824,13 +824,11 @@ def _assign_linen_params_to_nnx_state(
   return state
 
 
-class Transformer(nnx.Module):
+class Gemma(nnx.Module):
   """Gemma transformer."""
 
   @classmethod
-  def from_params(
-      cls, params: params_lib.Params, version: str
-  ) -> 'Transformer':
+  def from_params(cls, params: params_lib.Params, version: str) -> 'Gemma':
 
     if version.startswith('2-'):
       config_id = version.replace('2-', 'gemma2_')
@@ -986,10 +984,10 @@ class Transformer(nnx.Module):
     }
 
 
-class TransformerWithScoreHead(nnx.Module):
+class GemmaWithScoreHead(nnx.Module):
   """Gemma transformer with a score head."""
 
-  def __init__(self, transformer: Transformer, rngs: nnx.Rngs):
+  def __init__(self, transformer: Gemma, rngs: nnx.Rngs):
     """Initializes the transformer with a score head.
 
     Args:

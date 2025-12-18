@@ -73,7 +73,7 @@ class ShardingConfig:
         ffw_weight_fd=('tp', fsdp),
         rms_norm_weight=('tp',),
         act_btd=('fsdp', None, None if is_sampling else 'tp'),
-        act_btf=('fsdp', None, 'tp'),
+        act_btf=('fsdp', None, None),
         act_btnh=('fsdp', None, 'tp', None),
     )
 
@@ -156,7 +156,7 @@ class ModelConfig:
     )
 
   @classmethod
-  def llama3_405b(cls):
+  def llama3p1_405b(cls):
     return cls(
         num_layers=126,
         vocab_size=128256,

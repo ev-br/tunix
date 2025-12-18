@@ -26,6 +26,7 @@ from flax import nnx
 import jax
 from jax import lax
 import jax.numpy as jnp
+import numpy as np
 
 
 def compute_attention_masks(
@@ -88,23 +89,23 @@ def next_power_of_2(x: int) -> int:
 
 
 def pad_to_length(
-    x: jax.Array,
+    x: np.ndarray,
     target_length: int,
     pad_value: int = 0,
     left=False,
     axis: int = 0,
-) -> jax.Array:
-  """Pads a JAX array to a specified target length along a given axis.
+) -> np.ndarray:
+  """Pads a numpy array to a specified target length along a given axis.
 
   Args:
-      x: The JAX array to pad.
+      x: The numpy array to pad.
       target_length: The desired length of the padded array.
       pad_value: The value to use for padding (default: 0).
       left: If True, add padding tokens to the left of the array.
       axis: The axis along which to pad (default: 0).
 
   Returns:
-      A new JAX array that is padded to the target length along the specified
+      A new numpy array that is padded to the target length along the specified
       axis. Returns original array if it is already longer than the target
       length.
   """
@@ -114,12 +115,12 @@ def pad_to_length(
 
   padding_shape = list(x.shape)
   padding_shape[axis] = target_length - length
-  padding = jnp.full(padding_shape, pad_value, dtype=x.dtype)
+  padding = np.full(padding_shape, pad_value, dtype=x.dtype)
 
   if left:
-    return jnp.concatenate([padding, x], axis=axis)
+    return np.concatenate([padding, x], axis=axis)
   else:
-    return jnp.concatenate([x, padding], axis=axis)
+    return np.concatenate([x, padding], axis=axis)
 
 
 def find_first_non_pad_idx(ids, pad_id):

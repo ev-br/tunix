@@ -147,6 +147,9 @@ class ToyTransformer(nnx.Module):
   def num_embed(self) -> int:
     return self.emb.num_embeddings
 
+  def get_model_input(self):
+    return get_dummy_inputs_for_lora_toy_transformer_tests()
+
 
 def get_dummy_inputs_for_lora_toy_transformer_tests():
   return {
@@ -236,8 +239,8 @@ class MockVocab(spm.SentencePieceProcessor):
     ]
 
 
-class MockTransformerWithScoreHead(nnx.Module):
-  """Gemma transformer with a score head."""
+class ToyTransformerWithScoreHead(nnx.Module):
+  """Toy transformer with a score head."""
 
   def __init__(self, transformer: nnx.Module, rngs: nnx.Rngs):
     """Initializes the transformer with a score head.
